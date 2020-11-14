@@ -23,5 +23,7 @@ class MoveToTargetEnv(FlightEnv):
         target.vel = np.array([0.0, 0])
         target.orient = np.array([1, 0])
         target.gravityExempt = True
+        self.target = target
         
         self.targetForces = partial(FlightEnv.__calcForces, self, self.target)
+        
