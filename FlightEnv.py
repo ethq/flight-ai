@@ -16,6 +16,7 @@ additional rendering.
 
 """
 
+
 class FlightObject:
     id_ = 0
     def __init__(self):
@@ -28,35 +29,53 @@ class FlightObject:
         self.dragCoef = 1.0
         self.mass = 1.0
         
+        # Accel is a flag telling us whether or not this object is accelerating (x, y)
+        self.accel = [0, 0]
+        
+        # We apply a fixed acceleration, given by these values (x, y)
+        self.accel_values = [2, 2]
+        
 
 
 class FlightEnv:
     def __init__(self, name = 'Nameless'):
         chaser = FlightObject()
         chaser.pos = np.array([0,0])
-        chaser.vel = np.array([7, 0])
-        chaser.orient = np.array([1, 0.7])
-        chaser.liftCoef = 10
-        chaser.dragCoef = 3
+        chaser.vel = np.array([1.2, 0])
+        chaser.orient = np.array([0.7, 0.2])
+        chaser.liftCoef = 2.6
+        chaser.dragCoef = 0.6
+        chaser.accel[0] = 1
         self.chaser = chaser
         
         self.physics = {
-            'g': 0.0,              # acceleration of gravity
-            'aoa_critical': 30,     # no lift beyond this angle
+            'g': 1.08,                   # acceleration of gravity
+            'aoaCritical': np.pi/6,      # no lift beyond this angle
         }
         
         self.simulation = {
             't': 0,
-            'timeStep': 1.0/60.0,
-            'viewport': [30, 30]
+            'timeStep': 1.0/120.0,
         }
         
-        # 0: thrust on
-        # 1: thrust off
-        # 2: no pitch
-        # 3: pitch up
-        # 4: pitch down
-        self.action_space = [0, 1, 2]
+        self.renderOpts = {
+            'viewport': [30, 1.6],
+            'arrowHeadLength': .1,
+            'arrowHeadWidth': .1
+        }
+        
+        """ 
+            Possible actions:
+            
+            # 0: no pitch, thrust on
+            # 1: pitch up, thrust on
+            # 2: pitch down, thrust on
+            
+            # 3: no pitch, thrust off
+            # 4: pitch up, thrust off
+            # 5: pitch down, thrust off 
+        """
+        self.action_space = list(range(6))
         
         self.chaserForces = lambda t, vel: sum(partial(FlightEnv.__calculateForces, self, self.chaser)(t, vel))
         
@@ -65,35 +84,50 @@ class FlightEnv:
         FlightObject.id_ = FlightObject.id_ + 1
         self.id_ = FlightObject.id_
         
+    def Reset(self):
+        pass
+    
+    def __liftModulator(self, y):
+        mod = 1
+        width = 1
+        
+        return mod*(1-np.tanh(y/width))
+        
     # Obj is to be used only for static properties
     def __calculateForces(self, obj, t, vel):
-        # Calculate velocity-independent forces first
+        forces = []
+        # Calculate gravity
         gravity = self.physics['g']*np.array([0, -1])
         if (obj.gravityExempt):
             gravity = 0*gravity
-            
-        forces = [gravity]
+        forces.append(gravity)
         
-        # If velocity is zero, just return the other forces
+        # Calculate thrust
+        thrust = np.array([a*av/obj.mass for a, av in zip(obj.accel, obj.accel_values)])
+        forces.append(thrust)
+        
+        # The rest of the forces depend on the velocity. Thus return if zero
         if (not np.linalg.norm(vel)):
             return forces
         
+        # Calculate drag
         dragDir = -vel / np.linalg.norm(vel)
         drag = obj.dragCoef*np.dot(vel, vel)*dragDir
         
+        # Calculate lift
         overlap = np.dot(vel, obj.orient)/(np.linalg.norm(obj.orient)*np.linalg.norm(vel))
         if overlap > 1.0:
             overlap = 1.0
         elif overlap < -1.0:
             overlap = -1.0
         angleOfAttack = np.arccos(overlap)
-
-        if (angleOfAttack > self.physics['aoa_critical']):
+        print(angleOfAttack)
+        if (angleOfAttack > self.physics['aoaCritical']):
             angleOfAttack = 0.0
             
-        # Rotation by 90 deg ccw, assumes velocities given in cartesian coords
+        # Lift is perpendicular to velocity
         liftDir = np.array([-vel[1], vel[0]])/np.linalg.norm(vel)
-        lift = obj.liftCoef*angleOfAttack*np.dot(vel, vel)*liftDir
+        lift = self.__liftModulator(obj.pos[1])*obj.liftCoef*angleOfAttack*np.dot(vel, vel)*liftDir
         
         forces.append(drag)
         forces.append(lift)
@@ -121,12 +155,13 @@ class FlightEnv:
     ## Public methods ##
     
     # Steps the simulation and performs the action
-    def step(self, action=0):
+    def Step(self, action = 0):
         # Current time
         t = self.simulation['t']
         dt = self.simulation['timeStep']
         
         # Apply action
+        self.chaser.accel[0] = True if action else False
         
         # Update chaser
         self.chaser.vel = self.__rk4_step(t, dt, self.chaser.vel, self.chaserForces)
@@ -141,19 +176,19 @@ class FlightEnv:
         
         return [self.chaser.pos, self.chaser.vel, reward, done]
 
-    def render(self, save = False, debug = True):
-        vp = self.simulation['viewport']
+    def Render(self, save = False, debug = True):
+        vp = self.renderOpts['viewport']
         plt.gca().set_xlim(self.chaser.pos[0]-vp[0]/2, self.chaser.pos[0] + vp[0]/2)
         plt.gca().set_ylim(self.chaser.pos[1]-vp[1]/2, self.chaser.pos[1] + vp[1]/2)
         
         
         # Draw chaser: position, orientation and velocity
         plt.plot(*self.chaser.pos, color='red', marker='o')
-        plt.arrow(*self.chaser.pos, *self.chaser.orient, head_width=.3, head_length=.3)
+        plt.arrow(*self.chaser.pos, *(self.chaser.orient/np.linalg.norm(self.chaser.orient)/5), head_width=0, head_length=0)
         
         velnorm = np.linalg.norm(self.chaser.vel)
         chaservel = self.chaser.vel/velnorm if velnorm else self.chaser.vel
-        plt.arrow(*self.chaser.pos, *chaservel, head_width=.3, head_length=.3, color = 'red')
+        plt.arrow(*self.chaser.pos, *chaservel, head_width=0, head_length=0, color = 'red')
         
         
         # Add debug text
@@ -184,7 +219,7 @@ class FlightEnv:
             
         plt.clf()
             
-    def save_animation(self):
+    def SaveAnimation(self):
         path = 'Plots/{}/{}/'.format(self.name, self.id_)
         filenames = sorted([f for f in listdir(path) if isfile(join(path, f))], key = lambda x: int(x[:-4]))
         

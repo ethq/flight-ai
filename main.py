@@ -12,17 +12,33 @@ In this environment the goal is to keep the plane flying in a straight line.
 import numpy as np
 import matplotlib.pyplot as plt
 
-#from FlightEnv import FlightEnv
 from LineEnv import LineEnv
+import LinePolicies
 
 env = LineEnv(name = 'start')
+policy = LinePolicies.AlwaysThrust
+policy = LinePolicies.ActOnUpOrDown
 
 positions = []
-for i in range(1000):
-    env.step(1)
+actions = []
+action = True
+obs = []
+
+for i in range(2000):
+    obs = env.Step(action)
+    action = policy(obs)
+    
+    actions.append(action)
     positions.append(env.chaser.pos)
-    
     if (not i % 10):
-        env.render(True)
+        env.Render(True)
     
-env.save_animation()
+env.SaveAnimation()
+
+
+# Draw trajectory
+plt.plot(*list(zip(*positions)))
+plt.show()
+
+plt.plot(actions)
+plt.show()
