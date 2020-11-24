@@ -5,6 +5,8 @@ Created on Sat Nov 21 11:48:01 2020
 @author: Z
 """
 
+import numpy as np
+
 # Policies for LineEnv
 # LineEnv.step() returns [position, velocity, reward, done]
 
@@ -17,6 +19,44 @@ def ActOnUpOrDown(observation):
     pos, vel, reward, done = observation
     return True if pos[1] < 0 else False
 
+def ActOnUpOrDownModulated(obs):
+    pos, vel, reward, done = obs
+    return True if pos[1] < .02 else False
+
+def ThrustInRange(obs):
+    pos, vel, reward, done = obs
+    y = pos[1]
+    
+    if y > -0.1 and y < 0.01:
+        return True
+    else:
+        return False
+    
+def ThrustOnNegativeVelocity(obs):
+    p, v, r, d = obs
+    
+    if v[1] < 0:
+        return True
+    return False
+
+def ThrustOnNegativeVelocityAndRange(obs):
+    p, v, r, d = obs
+    
+    if -v[1] > 0.005:
+        return True
+    return False
+
+def VelocityAndPositionRange(obs):
+    p,v,r,d = obs
+    
+    # Relax plane to y = 0 as quickly as possible
+    
+    if p[1] > 0.025:
+        return False
+    elif -v[1] > 0.0008:
+        return True
+    return False
+
 
 """
 Always thrust.
@@ -24,6 +64,10 @@ Always thrust.
 def AlwaysThrust(observation):
     pos, vel, reward, done = observation
     return True
+
+    
+
+
 
 
 
@@ -41,6 +85,7 @@ def TestActOnUpOrDown():
     success += 1 if thrust_on else 0
     
     print('Passed {}/{} tests.'.format(success, total))
+    
     
 if __name__ == '__main__':
     TestActOnUpOrDown()

@@ -39,17 +39,10 @@ class FlightObject:
 
 class FlightEnv:
     def __init__(self, name = 'Nameless'):
-        chaser = FlightObject()
-        chaser.pos = np.array([0,0])
-        chaser.vel = np.array([1.2, 0])
-        chaser.orient = np.array([0.7, 0.2])
-        chaser.liftCoef = 2.6
-        chaser.dragCoef = 0.6
-        chaser.accel[0] = 1
-        self.chaser = chaser
+        self.chaser = FlightObject()
         
         self.physics = {
-            'g': 1.08,                   # acceleration of gravity
+            'g': .5,                   # acceleration of gravity
             'aoaCritical': np.pi/6,      # no lift beyond this angle
         }
         
@@ -59,9 +52,15 @@ class FlightEnv:
         }
         
         self.renderOpts = {
-            'viewport': [30, 1.6],
+            'viewport': [5, 5],
             'arrowHeadLength': .1,
             'arrowHeadWidth': .1
+        }
+        
+        # History
+        self.history = {
+            'positions': [],
+            'actions': []
         }
         
         """ 
@@ -115,15 +114,15 @@ class FlightEnv:
         drag = obj.dragCoef*np.dot(vel, vel)*dragDir
         
         # Calculate lift
-        overlap = np.dot(vel, obj.orient)/(np.linalg.norm(obj.orient)*np.linalg.norm(vel))
-        if overlap > 1.0:
-            overlap = 1.0
-        elif overlap < -1.0:
-            overlap = -1.0
-        angleOfAttack = np.arccos(overlap)
-        print(angleOfAttack)
-        if (angleOfAttack > self.physics['aoaCritical']):
-            angleOfAttack = 0.0
+        
+        # Get angle of attack first
+        phi_vel = np.arctan2(vel[1]/np.linalg.norm(vel), vel[0]/np.linalg.norm(vel))
+        phi_ori = np.arctan2(obj.orient[1]/np.linalg.norm(obj.orient), obj.orient[0]/np.linalg.norm(obj.orient))
+        angleOfAttack = phi_ori - phi_vel
+        
+        # If aoa negative or beyond critical, just set it to zero to kill the lift
+        if angleOfAttack < 0 or angleOfAttack > self.physics['aoaCritical']:
+            angleOfAttack = 0
             
         # Lift is perpendicular to velocity
         liftDir = np.array([-vel[1], vel[0]])/np.linalg.norm(vel)
@@ -170,6 +169,10 @@ class FlightEnv:
         # Update time
         self.simulation['t'] = t + dt
         
+        # Save step to history
+        self.history['positions'].append(self.chaser.pos)
+        self.history['actions'].append(action)
+        
         # Return an observation, which our policy will use to choose an action
         reward = self.__calculateReward()
         done = self.__isSimulationFinished()
@@ -184,7 +187,7 @@ class FlightEnv:
         
         # Draw chaser: position, orientation and velocity
         plt.plot(*self.chaser.pos, color='red', marker='o')
-        plt.arrow(*self.chaser.pos, *(self.chaser.orient/np.linalg.norm(self.chaser.orient)/5), head_width=0, head_length=0)
+        plt.arrow(*self.chaser.pos, *(self.chaser.orient/np.linalg.norm(self.chaser.orient)), head_width=0, head_length=0)
         
         velnorm = np.linalg.norm(self.chaser.vel)
         chaservel = self.chaser.vel/velnorm if velnorm else self.chaser.vel
