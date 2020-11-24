@@ -17,28 +17,36 @@ import LinePolicies
 
 env = LineEnv(name = 'start')
 policy = LinePolicies.AlwaysThrust
-policy = LinePolicies.ActOnUpOrDown
+policy = LinePolicies.ActOnUpOrDownModulated
+policy = LinePolicies.ThrustInRange
+policy = LinePolicies.ThrustOnNegativeVelocityAndRange
+policy = LinePolicies.VelocityAndPositionRange
 
 positions = []
 actions = []
 action = True
 obs = []
 
-for i in range(2000):
+for i in range(4000):
     obs = env.Step(action)
     action = policy(obs)
     
-    actions.append(action)
-    positions.append(env.chaser.pos)
-    if (not i % 10):
-        env.Render(True)
+#     if (not i % 50):
+#         env.Render(True)
     
-env.SaveAnimation()
+# env.SaveAnimation()
+
+# How did we do?
+print(env.Score())
 
 
 # Draw trajectory
-plt.plot(*list(zip(*positions)))
-plt.show()
+pos = list(zip(*env.history['positions']))
+plt.plot(pos[1])
+plt.title(f'Score: {env.Score()}\nPolicy: {policy}')
+
+actions = np.array(env.history['actions'])
+actions = actions * max(pos[1])
 
 plt.plot(actions)
 plt.show()

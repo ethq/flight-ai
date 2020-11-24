@@ -18,9 +18,17 @@ class LineEnv(FlightEnv):
         # For now, the line is straight and locked to y = 0
         self.y = 0
         
-        # Set the acceleration values to give a decent fit at full throttle for T = 2000.
+        # Set initial values to give OK performance with a simple policy
+        self.chaser.vel = np.array([1.2, 0])
+        self.chaser.orient = np.array([0.7, 0.14])
+        self.chaser.liftCoef = 5.8
+        self.chaser.dragCoef = 0.6
+        self.chaser.accel[0] = 1
         self.chaser.accel_values = [0.95, 0]
         
+    def Score(self):
+        return sum([np.dot(p,p) for p in self.history['positions']])
+    
     def Render(self, save):
         # Figure out where we need to draw the line
         pos = self.chaser.pos
