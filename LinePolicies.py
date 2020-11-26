@@ -6,15 +6,13 @@ Created on Sat Nov 21 11:48:01 2020
 """
 
 import numpy as np
+import tensorflow as tf
 
 # Policies for LineEnv
 # LineEnv.step() returns [position, velocity, reward, done]
 
 
-"""
-If pos[0] > 0, releases thrust
-If pos[1] < 0, applies thrust
-"""
+
 def ActOnUpOrDown(observation):
     pos, vel, reward, done = observation
     return True if pos[1] < 0 else False
@@ -57,15 +55,30 @@ def VelocityAndPositionRange(obs):
         return True
     return False
 
-
-"""
-Always thrust.
-"""
 def AlwaysThrust(observation):
     pos, vel, reward, done = observation
     return True
 
+def SimpleNet(obs):
+    p,v,r,d = obs
     
+    # Architecture
+    n_inputs = 4
+    n_hidden = 4
+    n_outputs = 1
+    initializer = tf.contrib.layers.variance_scaling_initializer()
+    
+    # Building
+    X = tf.placeholder(tf.float32, shape=[None, n_inputs])
+    hidden = tf.layers.dense(X, n_hidden, activation=tf.nn.elu, kernel_initializer=initializer)
+    logits = tf.layerse.dense(hidden, n_outputs, kernel_initializer=initializer)
+    outputs = tf.nn.sigmoid(logits)
+    
+    # Sample multinomial distrib to pick action given probabilities
+    p_thrust_nothrust = tf.concat(axis=1, values=[outputs, 1-outputs])
+    action = tf.multinomial(tf.log(p_thrust_nothrust), num_samples=1)
+    
+    init = tf.global_variables_initializer()
 
 
 

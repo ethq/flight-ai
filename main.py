@@ -24,29 +24,32 @@ policy = LinePolicies.VelocityAndPositionRange
 
 positions = []
 actions = []
+rewards = []
+
 action = True
 obs = []
 
-for i in range(4000):
+for i in range(2000):
     obs = env.Step(action)
     action = policy(obs)
     
+    actions.append(action)
+    rewards.append(obs[2])
 #     if (not i % 50):
 #         env.Render(True)
     
 # env.SaveAnimation()
 
 # How did we do?
-print(env.Score())
+#print(env.Score())
+print(f'Total reward: {sum(rewards)}')
 
 
 # Draw trajectory
 pos = list(zip(*env.history['positions']))
 plt.plot(pos[1])
-plt.title(f'Score: {env.Score()}\nPolicy: {policy}')
+plt.title(f'Score: {env.Score()}\nPolicy: {policy.__name__}')
 
-actions = np.array(env.history['actions'])
-actions = actions * max(pos[1])
-
-plt.plot(actions)
+actions = np.array(actions) * max(pos[1])
+plt.plot(actions, alpha=.3, color = 'black')
 plt.show()

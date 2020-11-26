@@ -59,8 +59,7 @@ class FlightEnv:
         
         # History
         self.history = {
-            'positions': [],
-            'actions': []
+            'positions': [self.chaser.pos]
         }
         
         """ 
@@ -76,7 +75,10 @@ class FlightEnv:
         """
         self.action_space = list(range(6))
         
-        self.chaserForces = lambda t, vel: sum(partial(FlightEnv.__calculateForces, self, self.chaser)(t, vel))
+        # Observations are (pos, vel)
+        self.observation_space = list(range(4))
+        
+        self.chaserForces = lambda t, vel: sum(partial(FlightEnv._calculateForces, self, self.chaser)(t, vel))
         
         # Used for saving plots (to an unused folder)
         self.name = name
@@ -86,14 +88,14 @@ class FlightEnv:
     def Reset(self):
         pass
     
-    def __liftModulator(self, y):
+    def _liftModulator(self, y):
         mod = 1
         width = 1
         
         return mod*(1-np.tanh(y/width))
         
     # Obj is to be used only for static properties
-    def __calculateForces(self, obj, t, vel):
+    def _calculateForces(self, obj, t, vel):
         forces = []
         # Calculate gravity
         gravity = self.physics['g']*np.array([0, -1])
@@ -126,23 +128,23 @@ class FlightEnv:
             
         # Lift is perpendicular to velocity
         liftDir = np.array([-vel[1], vel[0]])/np.linalg.norm(vel)
-        lift = self.__liftModulator(obj.pos[1])*obj.liftCoef*angleOfAttack*np.dot(vel, vel)*liftDir
+        lift = self._liftModulator(obj.pos[1])*obj.liftCoef*angleOfAttack*np.dot(vel, vel)*liftDir
         
         forces.append(drag)
         forces.append(lift)
         
         return forces
     
-    def __calculateReward(self):
-        return 1
+    def _calculateReward(self):
+        return -1
     
-    def __isSimulationFinished(self):
+    def _isSimulationFinished(self):
         return False
     
     # Might need adaptive version (?)
     # f should return the rhs of the ODE dv/dt = 1/m*f(t, v)
     # we assume it to be vectorized
-    def __rk4_step(self, t, dt, v, f):        
+    def _rk4_step(self, t, dt, v, f):        
         k1 = dt*f(t, v)
         k2 = dt*f(t + dt/2, v + k1/2)
         k3 = dt*f(t + dt/2, v + k2/2)
@@ -163,7 +165,7 @@ class FlightEnv:
         self.chaser.accel[0] = True if action else False
         
         # Update chaser
-        self.chaser.vel = self.__rk4_step(t, dt, self.chaser.vel, self.chaserForces)
+        self.chaser.vel = self._rk4_step(t, dt, self.chaser.vel, self.chaserForces)
         self.chaser.pos = self.chaser.pos + dt*self.chaser.vel
         
         # Update time
@@ -171,11 +173,10 @@ class FlightEnv:
         
         # Save step to history
         self.history['positions'].append(self.chaser.pos)
-        self.history['actions'].append(action)
         
         # Return an observation, which our policy will use to choose an action
-        reward = self.__calculateReward()
-        done = self.__isSimulationFinished()
+        reward = self._calculateReward()
+        done = self._isSimulationFinished()
         
         return [self.chaser.pos, self.chaser.vel, reward, done]
 
@@ -199,7 +200,7 @@ class FlightEnv:
             velocityText = 'Velocity: ({:.3f}, {:.3f})'.format(self.chaser.vel[0], self.chaser.vel[1])
             plt.text(0.03, 0.95, velocityText, horizontalalignment='left', verticalalignment='center', transform=plt.gca().transAxes)
             
-            forces = self.__calculateForces(self.chaser, self.simulation['t'], self.chaser.vel)
+            forces = self._calculateForces(self.chaser, self.simulation['t'], self.chaser.vel)
             lift = forces[-1]
             drag = forces[-2]
             

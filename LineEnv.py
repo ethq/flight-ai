@@ -26,8 +26,14 @@ class LineEnv(FlightEnv):
         self.chaser.accel[0] = 1
         self.chaser.accel_values = [0.95, 0]
         
-    def Score(self):
-        return sum([np.dot(p,p) for p in self.history['positions']])
+    # Careful with this. May lead to messy design; we want separation of concerns and environment should primarily be focused on running
+    def Score(self, metric = 0):
+        if not metric:
+            return sum([p[1]**2 for p in self.history['positions']])
+        elif metric == 1:
+            return 0
+        
+        return 0
     
     def Render(self, save):
         # Figure out where we need to draw the line
@@ -40,13 +46,18 @@ class LineEnv(FlightEnv):
         
         super().Render(save)
         
-    def __calculateReward(self):
-        # Squared distance to the line
-        d = (self.chaser.pos[1] - self.y)**2
+    def _calculateReward(self):
+        # # For now, reward for going closer to 1, punishment otherwise
+        # assert(len(self.history['positions']) > 1)
+        # lastpos = self.history['positions'][-2]
+        # if (abs(self.chaser.pos[1]) < abs(lastpos[1])):
+        #     return 1
+        # return -1
         
-        # I'll clamp it to some random value for now
-        threshold = 10
-        if (d > threshold):
-            d = threshold
+        # Multiplier, we don't want numbers too small
+        mul = 1000
+        
+        # Squared distance to the line
+        d = -mul*np.abs(self.chaser.pos[1])**2
             
         return d
