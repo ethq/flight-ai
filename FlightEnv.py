@@ -86,7 +86,13 @@ class FlightEnv:
         self.id_ = FlightObject.id_
         
     def Reset(self):
-        pass
+        self.__init__(self.name)
+        
+        # Return a default observation
+        reward = 0
+        done = False
+        
+        return [self.chaser.pos, self.chaser.vel, reward, done]
     
     def _liftModulator(self, y):
         mod = 1

@@ -26,6 +26,16 @@ class LineEnv(FlightEnv):
         self.chaser.accel[0] = 1
         self.chaser.accel_values = [0.95, 0]
         
+    def Reset(self):
+        super().Reset()
+        self.__init__(self.name)
+        
+        # Return an observation, which our policy will use to choose an action
+        reward = self._calculateReward()
+        done = False
+        
+        return [self.chaser.pos, self.chaser.vel, reward, done]
+    
     # Careful with this. May lead to messy design; we want separation of concerns and environment should primarily be focused on running
     def Score(self, metric = 0):
         if not metric:

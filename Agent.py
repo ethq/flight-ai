@@ -1,11 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Nov 12 10:44:48 2020
-
-@author: Z
-"""
-
-"""
 In this environment the goal is to keep the plane flying in a straight line.
 """
 
@@ -14,6 +8,23 @@ import matplotlib.pyplot as plt
 
 from LineEnv import LineEnv
 import LinePolicies
+
+def discount_rewards(rewards, discount_rate):
+    discounted_rewards = np.empty(len(rewards))
+    cumulative_rewards = 0
+    for step in reversed(range(len(rewards))):
+        cumulative_rewards = rewards[step] + cumulative_rewards*discount_rate
+        discounted_rewards[step] = cumulative_rewards
+    return discounted_rewards
+
+def discount_and_normalize_rewards(all_rewards, discount_rate):
+    all_discounted_rewards = [discount_rewards(all_rewards, discount_rate) for reward in all_rewards]
+    flat_rewards = np.concatenate(all_discounted_rewards)
+    reward_mean = flat_rewards.mean()
+    reward_std = flat_rewards.std()
+    
+    return [(discounted_rewards - reward_mean)/reward_std for discounted_rewards in all_discounted_rewards]
+
 
 env = LineEnv(name = 'start')
 policy = LinePolicies.AlwaysThrust
@@ -42,7 +53,7 @@ for i in range(2000):
 
 # How did we do?
 #print(env.Score())
-print(f'Total reward: {sum(rewards)}')
+print(f'Total reward: {sum(rewards)}') 
 
 
 # Draw trajectory

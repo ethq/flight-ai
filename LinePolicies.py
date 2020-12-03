@@ -46,7 +46,7 @@ def ThrustOnNegativeVelocityAndRange(obs):
 
 def VelocityAndPositionRange(obs):
     p,v,r,d = obs
-    
+    print(r)
     # Relax plane to y = 0 as quickly as possible
     
     if p[1] > 0.025:
