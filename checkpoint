@@ -1,0 +1,2 @@
+model_checkpoint_path: "Smith_v8.ckpt"
+all_model_checkpoint_paths: "Smith_v8.ckpt"

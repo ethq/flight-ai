@@ -92,7 +92,7 @@ class FlightEnv:
         reward = 0
         done = False
         
-        return [self.chaser.pos, self.chaser.vel, reward, done]
+        return np.concatenate((self.chaser.pos, self.chaser.vel))
     
     def _liftModulator(self, y):
         mod = 1
@@ -141,7 +141,7 @@ class FlightEnv:
         
         return forces
     
-    def _calculateReward(self):
+    def CalculateReward(self):
         return -1
     
     def _isSimulationFinished(self):
@@ -181,11 +181,13 @@ class FlightEnv:
         self.history['positions'].append(self.chaser.pos)
         
         # Return an observation, which our policy will use to choose an action
-        reward = self._calculateReward()
+        reward = self.CalculateReward(self.chaser.pos)
         done = self._isSimulationFinished()
         
-        return [self.chaser.pos, self.chaser.vel, reward, done]
-
+        return [np.concatenate((self.chaser.pos, self.chaser.vel)), reward, done]
+    """
+    Plots & saves the current state of the CHASER.
+    """
     def Render(self, save = False, debug = True):
         vp = self.renderOpts['viewport']
         plt.gca().set_xlim(self.chaser.pos[0]-vp[0]/2, self.chaser.pos[0] + vp[0]/2)

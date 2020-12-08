@@ -30,20 +30,7 @@ class LineEnv(FlightEnv):
         super().Reset()
         self.__init__(self.name)
         
-        # Return an observation, which our policy will use to choose an action
-        reward = self._calculateReward()
-        done = False
-        
-        return [self.chaser.pos, self.chaser.vel, reward, done]
-    
-    # Careful with this. May lead to messy design; we want separation of concerns and environment should primarily be focused on running
-    def Score(self, metric = 0):
-        if not metric:
-            return sum([p[1]**2 for p in self.history['positions']])
-        elif metric == 1:
-            return 0
-        
-        return 0
+        return np.concatenate((self.chaser.pos, self.chaser.vel))
     
     def Render(self, save):
         # Figure out where we need to draw the line
@@ -56,18 +43,9 @@ class LineEnv(FlightEnv):
         
         super().Render(save)
         
-    def _calculateReward(self):
-        # # For now, reward for going closer to 1, punishment otherwise
-        # assert(len(self.history['positions']) > 1)
-        # lastpos = self.history['positions'][-2]
-        # if (abs(self.chaser.pos[1]) < abs(lastpos[1])):
-        #     return 1
-        # return -1
-        
+    def CalculateReward(self, pos):
         # Multiplier, we don't want numbers too small
-        mul = 1000
+        mul = 120 # Initial value ~50
         
         # Squared distance to the line
-        d = -mul*np.abs(self.chaser.pos[1])**2
-            
-        return d
+        return -np.exp(mul*np.abs(pos[1])**2)
