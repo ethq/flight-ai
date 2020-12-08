@@ -2,7 +2,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-import tensorflow.compat.v1 as tf
+import tensorflow as tf
 from tqdm import tqdm
 from time import time
 
